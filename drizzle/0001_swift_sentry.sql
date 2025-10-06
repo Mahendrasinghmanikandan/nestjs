@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "id" uuid PRIMARY KEY NOT NULL;

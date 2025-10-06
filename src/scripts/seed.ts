@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
+import { v4 as uuidv4 } from 'uuid';
 
 async function main() {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -27,6 +28,7 @@ async function main() {
       await db.insert(users).values({
         userPhoneNumber: u.user_phone_number,
         userPassword: hash,
+        id: uuidv4(),
       });
     }
   }

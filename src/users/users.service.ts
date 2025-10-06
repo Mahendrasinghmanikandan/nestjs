@@ -10,6 +10,7 @@ import { users } from '../db/schema';
 import { CheckAccountDto } from './dto/check-account.dto';
 import { VerifyPasswordDto } from './dto/verify-password.dto';
 import * as bcrypt from 'bcrypt';
+import * as jwt from 'jsonwebtoken';
 
 type DrizzleDb = import('drizzle-orm/node-postgres').NodePgDatabase;
 
@@ -17,7 +18,9 @@ type DrizzleDb = import('drizzle-orm/node-postgres').NodePgDatabase;
 export class UsersService {
   constructor(@Inject(DRIZZLE) private readonly db: DrizzleDb) {}
 
-  async checkAccountExist(dto: CheckAccountDto): Promise<{ exists: boolean }> {
+  async checkAccountExist(
+    dto: CheckAccountDto,
+  ): Promise<{ accountExists: boolean }> {
     const rows = await this.db
       .select({ userPhoneNumber: users.userPhoneNumber })
       .from(users)
@@ -26,12 +29,18 @@ export class UsersService {
     if (rows.length === 0) {
       throw new NotFoundException('Account not found');
     }
-    return { exists: true };
+    return { accountExists: true };
   }
 
-  async verifyPassword(dto: VerifyPasswordDto): Promise<{ valid: boolean }> {
+  async verifyPassword(
+    dto: VerifyPasswordDto,
+  ): Promise<{ valid: boolean; token: string }> {
     const rows = await this.db
-      .select({ userPassword: users.userPassword })
+      .select({
+        userPassword: users.userPassword,
+        userPhoneNumber: users.userPhoneNumber,
+        id: users.id,
+      })
       .from(users)
       .where(eq(users.userPhoneNumber, dto.user_phone_number))
       .limit(1);
@@ -47,6 +56,12 @@ export class UsersService {
     if (!isValid) {
       throw new UnauthorizedException('Invalid password');
     }
-    return { valid: true };
+    const token = jwt.sign(
+      { sub: rows[0].id },
+      process.env.JWT_SECRET ?? 'dev-secret',
+      { expiresIn: '1h' },
+    );
+
+    return { valid: true, token };
   }
 }
